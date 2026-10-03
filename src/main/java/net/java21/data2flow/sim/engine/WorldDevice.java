@@ -70,6 +70,13 @@ public record WorldDevice(long deviceId, long organizationId, String name, Strin
         return (int) property("reactionDelaySec", 0);
     }
 
+    /** 시나리오 실행용 시작 상태: 장비 OFF(유형 초기 상태), 배터리 100%. fCnt는 이어 간다(수집 경로의 프레임 순서) */
+    public WorldDevice forRun() {
+        return new WorldDevice(deviceId, organizationId, name, externalId, sourceId, spaceId, type, properties, metricSources,
+                reportIntervalSec, jitterPct, batteryDrainPerReport, payloadFormat, gatewayEui, response, seed, frameCounter,
+                batteryPct == null ? null : 100.0, null);
+    }
+
     public String profileName() {
         return type.linkedModelCode() != null ? type.linkedModelCode() : type.key();
     }

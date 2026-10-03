@@ -1001,7 +1001,7 @@ public final class SimulationWorld {
                     return true;
                 }
                 case DROPOUT -> {
-                    if (SimRandom.bernoulli(f.number("ratio", 1.0), seed, key, "dropout", f.faultId(), index)) {
+                    if (SimRandom.bernoulli(f.number("ratio", 1.0), seed, key, "dropout", faultKey(f), index)) {
                         return true;
                     }
                 }
@@ -1078,7 +1078,7 @@ public final class SimulationWorld {
                 case DUPLICATE -> copies = Math.max(copies, (int) f.number("factor", 2));
                 case DELAY -> delayMs = Math.max(delayMs, (long) (f.number("delaySec", 60) * 1000));
                 case REORDER -> reorder = f;
-                case MALFORMED -> malformed |= SimRandom.bernoulli(f.number("ratio", 0.1), seed, key, "malformed", f.faultId(), fCnt);
+                case MALFORMED -> malformed |= SimRandom.bernoulli(f.number("ratio", 0.1), seed, key, "malformed", faultKey(f), fCnt);
                 default -> {
                 }
             }
@@ -1157,6 +1157,11 @@ public final class SimulationWorld {
         Instant received = wall ? realNow : Instant.ofEpochMilli(p.sendAtMs);
         return new Emission.Uplink(p.deviceId, config.organizationId(), p.sourceId, p.topic, p.payload, p.dedupKey,
                 UUID.fromString(p.messageId), Instant.ofEpochMilli(p.measuredAtMs), received);
+    }
+
+    /** 장애 난수 키: DB ID가 아니라 내용(종류·대상·시작)으로 정해 실행마다 같다 */
+    static String faultKey(FaultSpec f) {
+        return f.kind() + ":" + f.targetType() + ":" + f.targetId() + ":" + f.simFrom().toEpochMilli();
     }
 
     /** 조직 기본 가상 게이트웨이 EUI */

@@ -752,7 +752,8 @@ public class SimulationExecutor implements SmartLifecycle {
         if (runs.findBusySpaces(organizationId).contains(spaceId)) {
             return true;
         }
-        return always && properties.executor().enabled() && properties.executor().ambient() && directory.allowed(organizationId);
+        boolean executing = properties.executor().enabled() || lastRoundAt != null;
+        return always && executing && properties.executor().ambient() && directory.allowed(organizationId);
     }
 
     public Instant lastRoundAt() {

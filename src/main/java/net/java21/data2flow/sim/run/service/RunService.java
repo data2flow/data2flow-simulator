@@ -18,6 +18,7 @@ import net.java21.data2flow.sim.fault.repository.FaultRepository;
 import net.java21.data2flow.sim.output.SimEventPublisher;
 import net.java21.data2flow.sim.run.domain.AccelerationClock;
 import net.java21.data2flow.sim.run.domain.RunAction;
+import net.java21.data2flow.sim.run.domain.RunLimits;
 import net.java21.data2flow.sim.run.domain.RunPlan;
 import net.java21.data2flow.sim.run.domain.RunStateMachine;
 import net.java21.data2flow.sim.run.domain.RunStatus;
@@ -116,7 +117,8 @@ public class RunService {
         if (spaces.size() != scenario.spaceIds().size()) {
             throw new BusinessException(SimErrorCode.SIM_NOT_FOUND);
         }
-        List<WorldDevice> devices = factory.devicesIn(organizationId, scenario.spaceIds());
+        // 실행은 언제나 같은 시작 상태(장비 OFF, 배터리 100%)에서 시작한다: 같은 시드 = 같은 결과(SIM-08.03)
+        List<WorldDevice> devices = factory.devicesIn(organizationId, scenario.spaceIds()).stream().map(WorldDevice::forRun).toList();
         checkAcceleration(devices.size(), acceleration);
         long seed = req.seed() != null ? req.seed() : scenario.seed() != null ? scenario.seed() : random.nextLong();
         RunPlan plan = new RunPlan(row.id(), scenario.name(), scenario, spaces, devices, properties.tickSec());
@@ -132,15 +134,8 @@ public class RunService {
         return new StartResponse(Long.toString(runId), running.name(), seed, acceleration);
     }
 
-    /** x60에서 기기 100대(SIM-11.01): 기기 수 × 가속 ≤ 100 × 60. 넘으면 허용 가속을 알려 준다 */
     void checkAcceleration(int deviceCount, int acceleration) {
-        long budget = (long) properties.limits().devicesAtMaxAcceleration() * AccelerationClock.MAX;
-        if ((long) deviceCount * acceleration > budget) {
-            int allowed = (int) Math.max(1, Math.min(AccelerationClock.MAX, budget / Math.max(1, deviceCount)));
-            throw new BusinessException(SimErrorCode.SIM_ACCELERATION_LIMIT, List.of(new FieldErrorDetail("acceleration",
-                    SimErrorCode.SIM_ACCELERATION_LIMIT.code(), "기기 " + deviceCount + "대는 x" + allowed + " 이하로 실행할 수 있습니다")),
-                    allowed).withHeader("X-SIM-ACCELERATION-ALLOWED", Integer.toString(allowed));
-        }
+        RunLimits.checkAcceleration(deviceCount, acceleration, properties.limits().devicesAtMaxAcceleration());
     }
 
     /** 시나리오 FAULT 트랙을 장애 행으로 풀어 둔다(정답 라벨의 정본, SIM-05.03) */
