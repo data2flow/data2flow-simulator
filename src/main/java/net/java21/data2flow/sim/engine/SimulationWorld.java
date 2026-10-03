@@ -22,6 +22,7 @@ import net.java21.data2flow.sim.random.SimRandom;
 import net.java21.data2flow.sim.scenario.domain.Expectation;
 import net.java21.data2flow.sim.scenario.domain.ScenarioEvent;
 import net.java21.data2flow.sim.sensor.domain.BatteryModel;
+import net.java21.data2flow.sim.sensor.domain.GeneratorSpec;
 import net.java21.data2flow.sim.sensor.domain.GeneratorState;
 import net.java21.data2flow.sim.sensor.domain.Generators;
 import net.java21.data2flow.sim.sensor.domain.ReportScheduler;
@@ -722,8 +723,7 @@ public final class SimulationWorld {
     private void reportSensor(WorldDevice d, long endMs, Instant realNow, List<Emission> out, List<Reading> readings) {
         WorldState.SensorRuntime rt = state.sensors.get(d.deviceId());
         if (d.type().reportOnChange()) {
-            SpaceState s = state.spaces.get(d.spaceId());
-            double now = s == null ? 0 : s.doorOpen || s.windowOpen ? 1 : 0;
+            double now = changeValue(d, rt, endMs - 1);
             if (rt.lastChangeValue == null || rt.lastChangeValue != now) {
                 emitSensorReport(d, rt, endMs - 1, realNow, out, readings);
                 rt.nextReportAtMs = endMs + (long) d.property("heartbeatSec", 3600) * 1000;
@@ -742,6 +742,20 @@ public final class SimulationWorld {
                     rngKeys.get(d.deviceId()), rt.reportIndex - 1);
             rt.nextReportAtMs = r + interval;
         }
+    }
+
+    /** 변화 보고 센서(문)의 지금 값: 첫 측정 항목을 그 출처(생성기 또는 공간 물리)로 읽는다 */
+    private double changeValue(WorldDevice d, WorldState.SensorRuntime rt, long atMs) {
+        MetricDef md = d.type().metrics().get(0);
+        MetricSource src = sources(d).get(md.key());
+        if (src != null && src.generator() != null && !GeneratorSpec.RANDOM_WALK.equals(src.generator().kind())) {
+            GeneratorState gs = rt.generators.computeIfAbsent(md.key(), x -> new GeneratorState());
+            return Generators.sample(src.generator(), gs, Instant.ofEpochMilli(atMs), config.zone(), d.seedOr(config.seed()),
+                    rngKeys.get(d.deviceId()), md.key(), rt.reportIndex);
+        }
+        SpaceState s = state.spaces.get(d.spaceId());
+        double v = s == null ? 0 : s.metric(md.key());
+        return Double.isNaN(v) ? 0 : v;
     }
 
     private static boolean hasBattery(WorldDevice d) {
@@ -779,7 +793,7 @@ public final class SimulationWorld {
             rt.battery = BatteryModel.afterReport(rt.battery, drain);
         }
         if (d.type().reportOnChange()) {
-            rt.lastChangeValue = values.getOrDefault("door", 0.0);
+            rt.lastChangeValue = values.getOrDefault(d.type().metrics().get(0).key(), 0.0);
         }
         if (dropped(active, at, index, seed, key)) {
             return;

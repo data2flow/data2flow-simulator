@@ -7,7 +7,8 @@ public final class BatteryModel {
     }
 
     public static double afterReport(double batteryPct, double drainPerReport) {
-        return Math.max(0, batteryPct - Math.max(0, drainPerReport));
+        double next = batteryPct - Math.max(0, drainPerReport);
+        return Math.max(0, Math.round(next * 1e9) / 1e9);   // 부동소수 찌꺼기 때문에 0에 못 닿는 일이 없게
     }
 
     /** 배터리 수명(년)과 보고 주기로 보고당 소모량(%p)을 구한다 */

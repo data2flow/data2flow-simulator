@@ -75,6 +75,8 @@ public final class PayloadEncoder {
         root.put("fPort", 85);
         root.put("confirmed", false);
         Map<String, Object> object = new LinkedHashMap<>(f.values());
+        // 실제 업링크처럼 data(원본 바이트)도 싣는다. 가상 장비는 코덱이 없으므로 object JSON 바이트를 담는다(디코더는 object를 먼저 쓴다)
+        root.put("data", java.util.Base64.getEncoder().encodeToString(MAPPER.writeValueAsBytes(object)));
         root.put("object", object);
         Map<String, Object> rx = new LinkedHashMap<>();
         rx.put("gatewayId", f.gatewayEui());
