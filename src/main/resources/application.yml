@@ -31,6 +31,10 @@ spring:
     password: ${DATA2FLOW_RABBITMQ_PASSWORD:guest}
     publisher-confirm-type: correlated
     connection-timeout: 5s
+  # 요청 본문의 빠진 숫자·불린 항목은 기본값(0·false)으로 받고 검증 단계에서 범위를 본다(Jackson 3 기본값은 실패)
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
   messages:
     basename: messages
     encoding: UTF-8

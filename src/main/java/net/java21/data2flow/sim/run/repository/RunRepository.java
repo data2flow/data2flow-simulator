@@ -60,8 +60,8 @@ public class RunRepository {
     public int transition(long organizationId, long id, RunStatus from, RunStatus to, Instant realNow) {
         return jdbc.sql("""
                 UPDATE data2flow_sim.runs SET status = :to,
-                    started_at = CASE WHEN :to = 'RUNNING' AND started_at IS NULL THEN :now ELSE started_at END,
-                    paused_at = CASE WHEN :to = 'PAUSED' THEN :now ELSE NULL END,
+                    started_at = CASE WHEN CAST(:to AS varchar) = 'RUNNING' AND started_at IS NULL THEN CAST(:now AS timestamptz) ELSE started_at END,
+                    paused_at = CASE WHEN CAST(:to AS varchar) = 'PAUSED' THEN CAST(:now AS timestamptz) ELSE NULL END,
                     updated_at = now()
                 WHERE id = :id AND organization_id = :org AND status = :from
                 """).param("to", to.name()).param("now", Timestamp.from(realNow)).param("id", id).param("org", organizationId)

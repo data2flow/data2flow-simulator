@@ -11,7 +11,9 @@ import java.util.Map;
 /** jsonb 열 읽고 쓰기(contracts MessageCodec 매퍼: ISO-8601 시각, 모르는 필드 무시) */
 public final class Json {
 
-    public static final JsonMapper MAPPER = MessageCodec.newMapper();
+    /** 계약 매퍼와 같되, 빠진 원시 타입 항목(가져오기 파일·요청 본문)은 기본값으로 읽는다 */
+    public static final JsonMapper MAPPER = MessageCodec.newMapper().rebuild()
+            .disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES).build();
     private static final TypeReference<LinkedHashMap<String, Object>> MAP = new TypeReference<>() {
     };
 

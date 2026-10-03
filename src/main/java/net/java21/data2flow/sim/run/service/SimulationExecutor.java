@@ -243,7 +243,9 @@ public class SimulationExecutor implements SmartLifecycle {
             lr.lastGood = lr.world.snapshotJson();
             lr.status = row.status();
             lr.requested = row.accelerationRequested();
-            lr.acceleration = new AccelerationClock(now, lr.world.tick(), row.accelerationEffective(), plan.tickSec());
+            // 처음이면 시작 시각이 기준점(실행기가 늦게 집어도 밀리지 않음), 체크포인트에서 이어 가면 지금이 기준점(따라잡기 폭주 없음)
+            Instant anchor = row.checkpoint() == null && row.startedAt() != null && !row.startedAt().isAfter(now) ? row.startedAt() : now;
+            lr.acceleration = new AccelerationClock(anchor, lr.world.tick(), row.accelerationEffective(), plan.tickSec());
             return lr;
         } catch (RuntimeException e) {
             log.warn("실행 {}을(를) 불러오지 못했습니다: {}", row.id(), e.toString());
@@ -284,6 +286,7 @@ public class SimulationExecutor implements SmartLifecycle {
         synchronized (lr) {
             if (row.isPresent() && row.get().status() == RunStatus.STOPPED) {
                 lr.world.finalizeExpectations(true);
+                saveRuntime(lr.world);
                 String result = Json.write(result(lr, true));
                 runs.finish(lr.organizationId, lr.runId, RunStatus.STOPPED, RunStateMachine.next(RunStatus.STOPPED, RunAction.COMPLETE),
                         lr.world.simNow(), lr.world.progressPct(), true, result, now, retainUntil(now), null);
@@ -351,6 +354,7 @@ public class SimulationExecutor implements SmartLifecycle {
             return;
         }
         lr.world.finalizeExpectations(false);
+        saveRuntime(lr.world);   // 끝난 장비 상태·fCnt를 기기 설정에 남긴다(상시 환경이 이어받음)
         String result = Json.write(result(lr, false));
         runs.finish(lr.organizationId, lr.runId, evaluating, RunStateMachine.next(evaluating, RunAction.COMPLETE), lr.world.simNow(),
                 100, false, result, now, retainUntil(now), null);

@@ -87,7 +87,7 @@ public abstract class IntegrationTestSupport {
         org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(60)).until(raw::ready);
         raw.failing(false);
         raw.clear();
-        Queue queue = new Queue("test.sim.events." + UUID.randomUUID(), false, false, true);
+        Queue queue = new Queue("test.sim.events." + UUID.randomUUID(), false, false, false);
         rabbitAdmin.declareQueue(queue);
         rabbitAdmin.declareBinding(BindingBuilder.bind(queue).to(new TopicExchange(MessagingNames.EXCHANGE_EVENTS, true, false)).with("#"));
         eventsQueue = queue.getName();
