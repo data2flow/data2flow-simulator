@@ -285,6 +285,11 @@ public final class SimulationWorld {
         return recorder == null ? List.of() : List.copyOf(recorder);
     }
 
+    /** 현재 상태(체크포인트 직렬화용. 실행기 스레드에서만 읽는다) */
+    public WorldState state() {
+        return state;
+    }
+
     /** 상태 깊은 복사(체크포인트 JSON) */
     public String snapshotJson() {
         return SNAPSHOT_MAPPER.writeValueAsString(state);

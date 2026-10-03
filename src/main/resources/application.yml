@@ -1,4 +1,4 @@
-# 공통 설정(design/conventions.md §4). 환경별 값은 application-{local,staging,prod}.yml, 비밀값은 환경변수.
+# 공통 설정(design/conventions.md §4). 환경별 값은 application-{local,staging,prod}.yml, 비밀값은 환경변수(.env / k8s Secret).
 spring:
   application:
     name: data2flow-simulator
@@ -8,7 +8,37 @@ spring:
     virtual:
       enabled: true
   lifecycle:
+    # 종료: 실행기가 체크포인트를 남기고 소유를 내려놓은 뒤 스트림 생산자를 닫는다(reliability-and-ha.md §4.1)
     timeout-per-shutdown-phase: 30s
+  # 기준 저장소: s3 공용 PostgreSQL DB data2flow, 스키마 data2flow_sim(ADR-019, erd/sim.md). 값은 환경변수
+  datasource:
+    url: jdbc:postgresql://${DATA2FLOW_DB_HOST:localhost}:${DATA2FLOW_DB_PORT:5432}/${DATA2FLOW_DB_NAME:data2flow}?ApplicationName=data2flow-simulator
+    username: ${DATA2FLOW_DB_USERNAME:data2flow}
+    password: ${DATA2FLOW_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 8
+      connection-init-sql: SET TIME ZONE 'UTC'
+  flyway:
+    schemas: data2flow_sim
+    default-schema: data2flow_sim
+    create-schemas: true
+  # RabbitMQ AMQP(s4, vhost: prod data2flow · staging data2flow-stg · local data2flow-dev, ADR-020·030): data2flow.events 발행
+  rabbitmq:
+    host: ${DATA2FLOW_RABBITMQ_HOST:localhost}
+    port: ${DATA2FLOW_RABBITMQ_PORT:5672}
+    virtual-host: ${DATA2FLOW_RABBITMQ_VHOST:data2flow-dev}
+    username: ${DATA2FLOW_RABBITMQ_USERNAME:guest}
+    password: ${DATA2FLOW_RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    connection-timeout: 5s
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 101MB
 server:
   port: 8080
   shutdown: graceful
@@ -25,6 +55,44 @@ management:
     health:
       probes:
         enabled: true
+      show-details: always
+      group:
+        # readiness: data2flow.raw에 기록할 수 있어야 한다. AMQP 이벤트는 잠시 없어도 시뮬레이션은 계속
+        readiness:
+          include: readinessState,rawStream,db
+  health:
+    rabbit:
+      enabled: false
   metrics:
     tags:
       application: ${spring.application.name}
+
+data2flow:
+  sim:
+    env: ${DATA2FLOW_SIM_ENV:dev}
+    # 파드 이름. 실행 소유(leases)와 원본 봉투 ingressInstance에 쓴다
+    instance-id: ${HOSTNAME:simulator-local-0}
+    flyway-mode: validate
+    # 배포 조직(ADR-030). 비우면 core 소스 실행 설정(API-DSC-50)의 SIMULATION 소스 조직만 돌린다
+    organization-ids: ${DATA2FLOW_SIM_ORGANIZATION_IDS:}
+    core-uri: ${DATA2FLOW_CORE_URI:http://data2flow-core-api}
+    zone: Asia/Seoul
+    tick-sec: 10
+    executor:
+      enabled: true
+      period: 1s
+      lease: 30s
+      ambient: true
+    stream:
+      host: ${DATA2FLOW_RABBITMQ_HOST:localhost}
+      port: ${DATA2FLOW_RABBITMQ_STREAM_PORT:5552}
+      virtual-host: ${DATA2FLOW_RABBITMQ_VHOST:data2flow-dev}
+      username: ${DATA2FLOW_RABBITMQ_USERNAME:guest}
+      password: ${DATA2FLOW_RABBITMQ_PASSWORD:guest}
+    heartbeat:
+      enabled: ${DATA2FLOW_SIM_HEARTBEAT_ENABLED:false}
+      interval: 10s
+    retention:
+      days: 30
+      max-days: 365
+      enabled: true

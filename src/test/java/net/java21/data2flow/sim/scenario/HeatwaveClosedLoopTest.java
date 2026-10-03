@@ -77,7 +77,8 @@ class HeatwaveClosedLoopTest {
         }
         assertThat(commandedAt).as("27℃ 이상 5분이 되어 에어컨을 켬").isNotNull();
         assertThat(commandedAt).isBefore(world.config().simStart().plusSeconds(3 * 3600));
-        double peak = physical.stream().filter(p -> p[0] > commandedAtMs(commandedAt)).mapToDouble(p -> p[1]).max().orElseThrow();
+        long commandedMs = commandedAtMs(commandedAt);
+        double peak = physical.stream().filter(p -> p[0] > commandedMs).mapToDouble(p -> p[1]).max().orElseThrow();
         double last = physical.getLast()[1];
         assertThat(last).isLessThan(peak).isBetween(24 - PhysicsTolerances.SETPOINT_BAND, 24 + PhysicsTolerances.SETPOINT_BAND);
         List<double[]> tail = physical.subList(physical.size() - 120, physical.size());

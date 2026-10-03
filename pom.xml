@@ -98,6 +98,11 @@
             <groupId>com.rabbitmq</groupId>
             <artifactId>stream-client</artifactId>
         </dependency>
+        <!-- core-api 내부 API(배포 조직·SIM 소스 조회 API-DSC-50, 가상 데이터 정리 요청) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
+        </dependency>
         <!-- 시나리오 YAML 가져오기·내보내기(SIM-08.02). Apache-2.0, 버전은 Jackson BOM -->
         <dependency>
             <groupId>tools.jackson.dataformat</groupId>
