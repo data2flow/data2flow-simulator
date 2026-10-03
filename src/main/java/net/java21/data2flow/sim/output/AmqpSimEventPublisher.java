@@ -1,6 +1,7 @@
 package net.java21.data2flow.sim.output;
 
 import net.java21.data2flow.contracts.message.DomainEvent;
+import net.java21.data2flow.contracts.message.EventType;
 import net.java21.data2flow.contracts.message.MessageCodec;
 import net.java21.data2flow.contracts.message.event.EventPayload;
 import net.java21.data2flow.contracts.messaging.MessageHeaders;
@@ -15,7 +16,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /** AMQP 발행: 발행 확인(publisher confirm)을 기다린다 */
@@ -34,9 +34,8 @@ public class AmqpSimEventPublisher implements SimEventPublisher {
     }
 
     @Override
-    public boolean publish(String type, long organizationId, EventPayload payload) {
-        DomainEvent<EventPayload> event = new DomainEvent<>(DomainEvent.VERSION, UUID.randomUUID(), type, organizationId,
-                clock.instant(), null, payload);
+    public boolean publish(EventType type, long organizationId, EventPayload payload) {
+        DomainEvent<EventPayload> event = DomainEvent.of(type, organizationId, payload, null, clock);
         MessageProperties props = new MessageProperties();
         props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
         props.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
@@ -44,10 +43,10 @@ public class AmqpSimEventPublisher implements SimEventPublisher {
         MessageHeaders.of(event).forEach(props::setHeader);
         CorrelationData correlation = new CorrelationData(event.messageId().toString());
         try {
-            rabbit.send(MessagingNames.EXCHANGE_EVENTS, type, new Message(codec.write(event), props), correlation);
+            rabbit.send(MessagingNames.EXCHANGE_EVENTS, type.routingKey(), new Message(codec.write(event), props), correlation);
             CorrelationData.Confirm confirm = correlation.getFuture().get(CONFIRM_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             if (!confirm.ack()) {
-                log.warn("이벤트 발행 거부: {} {}", type, confirm.reason());
+                log.warn("이벤트 발행 거부: {} {}", type.routingKey(), confirm.reason());
                 return false;
             }
             return true;
@@ -55,7 +54,7 @@ public class AmqpSimEventPublisher implements SimEventPublisher {
             Thread.currentThread().interrupt();
             return false;
         } catch (Exception e) {
-            log.warn("이벤트 발행 실패: {} ({})", type, e.toString());
+            log.warn("이벤트 발행 실패: {} ({})", type.routingKey(), e.toString());
             return false;
         }
     }

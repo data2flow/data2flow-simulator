@@ -51,7 +51,7 @@
 | `data2flow.events` `device.command.ack` | EVT-SIM-03 = EVT-ACT-06 | `{commandId, deviceId, result: ACKED|FAILED, reason?, at, virtual: true}` |
 | `data2flow.events` `device.state.reported` | EVT-SIM-03 = EVT-ACT-07 | `{deviceId, version, capabilities:{capability:{attr:value}}, reportedAt, virtual: true}` |
 
-이벤트 봉투는 contracts `DomainEvent`이고, 페이로드 타입은 아직 contracts에 없어 `net.java21.data2flow.sim.contracts`에 둡니다(TODO contracts).
+이벤트 봉투는 contracts `DomainEvent`, 종류는 contracts `EventType`(`SIM_RUN_*`·`SIM_FAULT_*`·`DEVICE_COMMAND_ACK`·`DEVICE_STATE_REPORTED`), 페이로드는 contracts `message.event`의 `SimRunChanged`·`SimFaultLabel`·`DeviceCommandAck`·`DeviceStateReported`입니다(JSON 모양은 위 표 그대로). 초기화(reset)는 `sim.run.reset`으로 냅니다.
 
 ## 4. 빌드와 실행
 

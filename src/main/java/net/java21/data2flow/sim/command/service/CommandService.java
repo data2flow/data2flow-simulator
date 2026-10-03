@@ -3,13 +3,13 @@ package net.java21.data2flow.sim.command.service;
 import net.java21.data2flow.contracts.error.BusinessException;
 import net.java21.data2flow.contracts.error.CommonErrorCode;
 import net.java21.data2flow.contracts.error.FieldErrorDetail;
+import net.java21.data2flow.contracts.message.EventType;
+import net.java21.data2flow.contracts.message.event.DeviceCommandAck;
+import net.java21.data2flow.contracts.message.event.DeviceStateReported;
 import net.java21.data2flow.sim.actuator.domain.ActuatorState;
 import net.java21.data2flow.sim.actuator.domain.CommandInterpreter;
 import net.java21.data2flow.sim.command.repository.CommandInboxRepository;
 import net.java21.data2flow.sim.common.SimErrorCode;
-import net.java21.data2flow.sim.contracts.DeviceCommandAck;
-import net.java21.data2flow.sim.contracts.DeviceStateReported;
-import net.java21.data2flow.sim.contracts.SimEventTypes;
 import net.java21.data2flow.sim.device.domain.ReportMode;
 import net.java21.data2flow.sim.device.repository.SimDeviceRepository;
 import net.java21.data2flow.sim.engine.WorldDevice;
@@ -87,9 +87,9 @@ public class CommandService {
             // 돌고 있는 세계가 없다: 지금 적용하고 응답한다(물리 피드백은 다음 실행에서)
             next.version = current.version + 1;
             devices.saveRuntime(deviceId, row.frameCounter(), null, next);
-            events.publish(SimEventTypes.COMMAND_ACK, row.organizationId(),
-                    new DeviceCommandAck(req.commandId(), deviceId, "ACKED", null, now, true));
-            events.publish(SimEventTypes.STATE_REPORTED, row.organizationId(),
+            events.publish(EventType.DEVICE_COMMAND_ACK, row.organizationId(),
+                    DeviceCommandAck.acked(req.commandId(), deviceId, now, true));
+            events.publish(EventType.DEVICE_STATE_REPORTED, row.organizationId(),
                     new DeviceStateReported(deviceId, next.version, next.reported(), now, true));
         }
         Map<String, Object> r = new LinkedHashMap<>();

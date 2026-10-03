@@ -3,11 +3,11 @@ package net.java21.data2flow.sim.run.service;
 import net.java21.data2flow.contracts.error.BusinessException;
 import net.java21.data2flow.contracts.error.CommonErrorCode;
 import net.java21.data2flow.contracts.error.FieldErrorDetail;
+import net.java21.data2flow.contracts.message.EventType;
+import net.java21.data2flow.contracts.message.event.SimRunChanged;
 import net.java21.data2flow.sim.common.Json;
 import net.java21.data2flow.sim.common.SimErrorCode;
 import net.java21.data2flow.sim.common.SimProperties;
-import net.java21.data2flow.sim.contracts.SimEventTypes;
-import net.java21.data2flow.sim.contracts.SimRunChanged;
 import net.java21.data2flow.sim.engine.TimestampPolicy;
 import net.java21.data2flow.sim.engine.WorldDevice;
 import net.java21.data2flow.sim.engine.WorldSpace;
@@ -129,7 +129,7 @@ public class RunService {
         insertScenarioFaults(organizationId, runId, scenario);
         RunStatus running = RunStateMachine.next(RunStatus.CREATED, RunAction.START);
         runs.transition(organizationId, runId, RunStatus.CREATED, running, now);
-        events.publish(SimEventTypes.run("started"), organizationId, new SimRunChanged(organizationId, runId, row.id(),
+        events.publish(EventType.SIM_RUN_STARTED, organizationId, new SimRunChanged(organizationId, runId, row.id(),
                 running.name(), scenario.simStartAt(), acceleration, null, null, now));
         return new StartResponse(Long.toString(runId), running.name(), seed, acceleration);
     }
@@ -197,7 +197,7 @@ public class RunService {
             default -> action.name().toLowerCase();
         };
         Instant simClock = executor.simNow(runId).orElse(row.simClock());
-        events.publish(SimEventTypes.run(suffix), organizationId, new SimRunChanged(organizationId, runId, row.scenarioId(), to.name(),
+        events.publish(EventType.simRun(suffix), organizationId, new SimRunChanged(organizationId, runId, row.scenarioId(), to.name(),
                 simClock, row.accelerationEffective(), action == RunAction.STOP ? Boolean.TRUE : null, null, now));
         return new ControlResponse(Long.toString(runId), to.name(), simClock, action == RunAction.RESET ? 0 : row.progressPct(),
                 row.accelerationEffective());

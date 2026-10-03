@@ -3,17 +3,17 @@ package net.java21.data2flow.sim.run.service;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import net.java21.data2flow.contracts.message.EventType;
 import net.java21.data2flow.contracts.message.RawEnvelope;
 import net.java21.data2flow.contracts.message.SourceTypes;
+import net.java21.data2flow.contracts.message.event.DeviceCommandAck;
+import net.java21.data2flow.contracts.message.event.DeviceStateReported;
+import net.java21.data2flow.contracts.message.event.SimFaultLabel;
+import net.java21.data2flow.contracts.message.event.SimRunChanged;
 import net.java21.data2flow.sim.command.repository.CommandInboxRepository;
 import net.java21.data2flow.sim.common.Json;
 import net.java21.data2flow.sim.common.SimDirectory;
 import net.java21.data2flow.sim.common.SimProperties;
-import net.java21.data2flow.sim.contracts.DeviceCommandAck;
-import net.java21.data2flow.sim.contracts.DeviceStateReported;
-import net.java21.data2flow.sim.contracts.SimEventTypes;
-import net.java21.data2flow.sim.contracts.SimFaultLabel;
-import net.java21.data2flow.sim.contracts.SimRunChanged;
 import net.java21.data2flow.sim.device.repository.SimDeviceRepository;
 import net.java21.data2flow.sim.engine.Emission;
 import net.java21.data2flow.sim.engine.SimulationWorld;
@@ -368,7 +368,7 @@ public class SimulationExecutor implements SmartLifecycle {
         if (RunStateMachine.allowed(from, RunAction.FAIL)) {
             runs.finish(organizationId, runId, from, RunStatus.FAILED, simClock == null ? now : simClock, 0, false, null, now,
                     retainUntil(now), reason.length() > 500 ? reason.substring(0, 500) : reason);
-            events.publish(SimEventTypes.run("failed"), organizationId,
+            events.publish(EventType.SIM_RUN_FAILED, organizationId,
                     new SimRunChanged(organizationId, runId, null, RunStatus.FAILED.name(), simClock, 1, null, reason, now));
         }
     }
@@ -378,7 +378,7 @@ public class SimulationExecutor implements SmartLifecycle {
     }
 
     void publishRun(LiveRun lr, String suffix, RunStatus status, Boolean partial, String reason, Instant now) {
-        events.publish(SimEventTypes.run(suffix), lr.organizationId, new SimRunChanged(lr.organizationId, lr.runId,
+        events.publish(EventType.simRun(suffix), lr.organizationId, new SimRunChanged(lr.organizationId, lr.runId,
                 lr.plan.scenarioId(), status.name(), lr.world.simNow(), lr.acceleration.acceleration(), partial, reason, now));
     }
 
@@ -456,10 +456,11 @@ public class SimulationExecutor implements SmartLifecycle {
         }
         for (Emission e : out) {
             switch (e) {
-                case Emission.CommandAck a -> events.publish(SimEventTypes.COMMAND_ACK, a.organizationId(),
-                        new DeviceCommandAck(a.commandId(), a.deviceId(), a.result(), a.reason(), a.at(), true));
+                case Emission.CommandAck a -> events.publish(EventType.DEVICE_COMMAND_ACK, a.organizationId(),
+                        new DeviceCommandAck(a.commandId(), a.deviceId(), DeviceCommandAck.Result.valueOf(a.result()), a.reason(),
+                                a.at(), true));
                 case Emission.StateReported r -> {
-                    events.publish(SimEventTypes.STATE_REPORTED, r.organizationId(),
+                    events.publish(EventType.DEVICE_STATE_REPORTED, r.organizationId(),
                             new DeviceStateReported(r.deviceId(), r.version(), r.capabilities(), r.at(), true));
                 }
                 case Emission.FaultLabel f -> {
@@ -467,7 +468,7 @@ public class SimulationExecutor implements SmartLifecycle {
                     if (spec.faultId() > 0) {
                         faults.updateStatus(organizationId, spec.faultId(), f.started() ? "ACTIVE" : "ENDED", f.started() ? null : f.at());
                     }
-                    events.publish(f.started() ? SimEventTypes.FAULT_STARTED : SimEventTypes.FAULT_ENDED, organizationId,
+                    events.publish(f.started() ? EventType.SIM_FAULT_STARTED : EventType.SIM_FAULT_ENDED, organizationId,
                             new SimFaultLabel(organizationId, runId, spec.faultId(), spec.kind().name(), spec.targetType(),
                                     spec.targetId(), spec.simFrom(), spec.simTo(), spec.params()));
                 }
