@@ -373,7 +373,7 @@ public class DeviceService {
             PlacedDevice p = placed.get(i);
             KitDef.Item item = kit.items().stream().filter(x -> x.typeKey().equals(p.typeKey())).findFirst().orElseThrow();
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("deviceId", created.get(i).get("deviceId"));
+            m.put("deviceId", String.valueOf(created.get(i).get("deviceId")));   // api-rules: ID는 문자열
             m.put("name", created.get(i).get("name"));
             m.put("typeKey", p.typeKey());
             m.put("relation", item.relation());

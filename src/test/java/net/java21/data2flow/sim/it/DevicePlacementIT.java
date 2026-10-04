@@ -27,6 +27,8 @@ class DevicePlacementIT extends IntegrationTestSupport {
         assertThat(r.status()).as(String.valueOf(r.body())).isEqualTo(201);
         JsonNode body = r.response();
         assertThat(body.get("devices")).hasSize(7);
+        assertThat(body.get("devices").get(4).get("deviceId").isString()).isTrue();   // api-rules: ID는 JSON 문자열
+        assertThat(body.get("devices").get(4).get("deviceId").asString()).isEqualTo("1004");
         assertThat(body.get("devices").get(0).get("relation").asString()).isEqualTo("MEASURES");
         assertThat(body.get("devices").get(4).get("relation").asString()).isEqualTo("CONTROLS");
         JsonNode flow = body.get("suggestedFlows").get(0);
